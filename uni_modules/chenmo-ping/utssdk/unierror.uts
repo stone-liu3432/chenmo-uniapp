@@ -1,0 +1,46 @@
+import { PingErrorCode, PingFail } from "./interface.uts"
+
+/**
+ * 错误主题
+ */
+export const UniErrorSubject = 'chenmo-ping';
+/**
+ * 错误码
+ * @UniError
+ */
+export const PingErrors : Map<PingErrorCode, string> = new Map([
+	/**
+	 * 未先调用 startWifi 接口
+	 */
+	[1001, 'ping:fail getAppContext is null'],
+	/**
+	 * 主机名解析失败
+	 */
+	[13000, 'host name resolution failed'],
+	/**
+	 * 目标主机不可达
+	 */
+	[13001, 'host unreachable'],
+	/**
+	 * 超时
+	 */
+	[13002, 'ping timed out'],
+	/**
+	 * 未知错误
+	 */
+	[13010, 'unknown error']
+]);
+
+export function getErrcode(errCode : number) : PingErrorCode {
+	const res = PingErrors[errCode];
+	return res == null ? 12000 : errCode;
+}
+
+export class PingFailImpl extends UniError implements PingFail {
+	constructor(errCode : PingErrorCode) {
+		super();
+		this.errSubject = UniErrorSubject;
+		this.errCode = errCode;
+		this.errMsg = PingErrors[errCode] ?? "";
+	}
+}

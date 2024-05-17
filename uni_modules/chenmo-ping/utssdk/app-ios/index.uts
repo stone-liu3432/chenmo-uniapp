@@ -1,0 +1,4 @@
+// 导出 Ping 函数
+export function ping(host : string) : string {
+	return "Ping failed.";
+}
