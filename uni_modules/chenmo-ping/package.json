@@ -7,7 +7,7 @@
         "chenmo-ping",
         "ping"
     ],
-	"repository": "",
+	"repository": "https://github.com/chenmo-x/chenmo-uniapp",
 	"engines": {
 		"HBuilderX": "^3.6.8"
 	},
