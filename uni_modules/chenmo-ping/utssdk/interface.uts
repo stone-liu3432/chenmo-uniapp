@@ -4,9 +4,20 @@ export type PingOptions = {
 	 */
 	addr : string;
 	/**
-	 * 超时时间 ms 
+	 * 超时时间 s 
+	 * 默认5s
 	 */
-	time : number;
+	time ?: number;
+	/**
+	 * ping次数
+	 * 默认5次
+	 */
+	count ?: number;
+	/**
+	 * 包大小
+	 * 默认32
+	 */
+	packetSize ?: number;
 	/**
 	 * 接口调用成功的回调
 	 */
@@ -26,9 +37,13 @@ export type PingResult = {
 	errSubject : string,
 	errMsg : string,
 	/**
-	 * ping所用时间,单位为ms
+	 * 平均时延,单位为ms
 	 */
-	time ?: number
+	time ?: number,
+	/**
+	 * 丢包率
+	 */
+	packetLoss ?: number
 }
 
 /**

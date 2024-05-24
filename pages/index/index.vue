@@ -12,7 +12,7 @@
 <script>
 	import {
 		ping,
-		pingSync,
+		pingSync
 	} from "@/uni_modules/chenmo-ping"
 	export default {
 		data() {
@@ -27,13 +27,17 @@
 			pingTest() {
 				ping({
 					addr: "192.168.88.1",
-					time: 5000,
+					success: res => {
+						console.log(res);
+					},
+					fail: e => {
+						console.log(e);
+					}
 				})
 			},
 			pingSyncTest() {
 				const res = pingSync({
 					addr: "www.baidu.com",
-					time: 5000
 				})
 				console.log(res);
 			}

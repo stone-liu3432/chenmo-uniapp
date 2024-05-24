@@ -2,6 +2,9 @@ import { Ping, PingOptions, PingResult, PingSync } from "../interface";
 import { PingFailImpl, getErrcode, UniErrorSubject } from '../unierror';
 import { UTSAndroid } from "io.dcloud.uts";
 import InetAddress from "java.net.InetAddress";
+import ProcessBuilder from "java.lang.ProcessBuilder";
+import BufferedReader from "java.io.BufferedReader";
+import InputStreamReader from "java.io.InputStreamReader";
 /**
  * @description 判断是否是ip或者主机
  * @param {Object} str 
@@ -11,6 +14,38 @@ function isIpOrHostname(str : string) : boolean {
 	const ipv6Pattern = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}(([0-9]{1,3}\.){3,3}[0-9]{1,3})|([0-9a-fA-F]{1,4}:){1,4}:(([0-9]{1,3}\.){3,3}[0-9]{1,3}))$/;
 	const hostnamePattern = /^(?=.{1,253}$)((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.?)+[A-Za-z]{2,6}$/;
 	return ipv4Pattern.test(str) || ipv6Pattern.test(str) || hostnamePattern.test(str);
+}
+
+type parsePingType = {
+	time : number,
+	packetLoss : number
+}
+// 解析 ping 命令的输出
+function parsePingOutput(output : string) : parsePingType {
+	const lines = output.split("\n");
+	let time = 0;
+	let packetLoss = 100;
+	let timeCount = 0
+	lines.forEach(line => {
+		if (line.includes("time=")) {
+			timeCount++
+			const timeMatch = line.match(/time=(\d+(?:\.\d+)?)/);
+			if (timeMatch !== null && timeMatch[1] !== null) {
+				time += parseFloat(timeMatch[1] as string);
+			}
+		}
+		if (line.includes("packet loss")) {
+			const packetLossMatch = line.match(/(\d+)% packet loss/);
+			if (packetLossMatch !== null && packetLossMatch[1] !== null) {
+				packetLoss = parseFloat(packetLossMatch[1] as string);
+			}
+		}
+	});
+	const averageTime = timeCount > 0 ? Math.round(time / timeCount) : 0;
+	return {
+		time: averageTime,
+		packetLoss: packetLoss
+	} as parsePingType;
 }
 /**
  * 异步ping
@@ -26,17 +61,25 @@ export const ping : Ping = function (options : PingOptions) {
 				options.complete?.(err)
 				return
 			}
-			const time = options.time
-			// 获取 InetAddress 实例
-			const inetAddress : InetAddress = InetAddress.getByName(addr);
-			// 记录发送请求的时间
-			const startTime = System.currentTimeMillis();
-			// 执行 Ping
-			if (inetAddress.isReachable(time.toInt())) { // 设置超时时间为 默认为5 秒
-				// 计算 ping 时间
-				const endTime = System.currentTimeMillis();
+			const count = options.count ?? 5
+			const packetSize = options.packetSize ?? 32
+			const timeout = options.time ?? 5
+			const pingCmd = ["ping", "-c", count.toString(), "-s", packetSize.toString(), "-W", timeout.toString(), addr];
+			const processBuilder = new ProcessBuilder(pingCmd);
+			const process = processBuilder.start();
+			const reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			const output = new java.lang.StringBuilder();
+			while (true) {
+				const line : string | null = reader.readLine()
+				if (line === null) break
+				output.append(line + "\n");
+			}
+			const exitValue = process.waitFor();
+			if (exitValue == 0) {
+				const result = parsePingOutput(output.toString());
 				let res = new PingResult(0, UniErrorSubject, "ping:ok", 0)
-				res.time = endTime - startTime;
+				res.time = result.time
+				res.packetLoss = result.packetLoss
 				options.success?.(res)
 				options.complete?.(res)
 			} else {
@@ -49,8 +92,8 @@ export const ping : Ping = function (options : PingOptions) {
 			options.fail?.(err)
 			options.complete?.(err)
 		}
-	} catch (e : Error) {
-		console.error(e)
+	} catch (e) {
+		console.log(e);
 		let err = new PingFailImpl(getErrcode(13010));
 		options.fail?.(err)
 		options.complete?.(err)
@@ -69,20 +112,28 @@ export const pingSync : PingSync = function (options : PingOptions) : PingResult
 				const res = new PingResult(err.errCode, err.errSubject, err.errMsg)
 				return res
 			}
-			const time = options.time
-			// 获取 InetAddress 实例
-			const inetAddress : InetAddress = InetAddress.getByName(addr);
-			// 记录发送请求的时间
-			const startTime = System.currentTimeMillis();
-			// 执行 Ping
-			if (inetAddress.isReachable(time.toInt())) { // 设置超时时间为 默认为5 秒
-				// 计算 ping 时间
-				const endTime = System.currentTimeMillis();
+			const count = options.count ?? 5
+			const packetSize = options.packetSize ?? 32
+			const timeout = options.time ?? 5
+			const pingCmd = ["ping", "-c", count.toString(), "-s", packetSize.toString(), "-W", timeout.toString(), addr];
+			const processBuilder = new ProcessBuilder(pingCmd);
+			const process = processBuilder.start();
+			const reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			const output = new java.lang.StringBuilder();
+			while (true) {
+				const line : string | null = reader.readLine()
+				if (line === null) break
+				output.append(line + "\n");
+			}
+			const exitValue = process.waitFor();
+			if (exitValue == 0) {
+				const result = parsePingOutput(output.toString());
 				let res = new PingResult(0, UniErrorSubject, "ping:ok", 0)
-				res.time = endTime - startTime;
+				res.time = result.time
+				res.packetLoss = result.packetLoss
 				return res
 			} else {
-				const err = new PingFailImpl(getErrcode(13002));
+				let err = new PingFailImpl(getErrcode(13002));
 				const res = new PingResult(err.errCode, err.errSubject, err.errMsg)
 				return res
 			}

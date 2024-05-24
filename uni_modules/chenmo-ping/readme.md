@@ -20,8 +20,7 @@
 import { pingSync } from "@/uni_modules/chenmo-ping"
 function handlePingSync() {
 	const res = pingSync({
-		addr: "www.baidu.com",
-		time: 5000
+		addr: "www.baidu.com"
 	})
 	console.log(res);
 }
@@ -34,7 +33,6 @@ import { ping } from "@/uni_modules/chenmo-ping"
 function handlePing() {
 	ping({
 		addr: "192.168.88.1",
-		time: 5000,
 		success: (res) => {
 			console.log(res)
 		},
@@ -52,21 +50,24 @@ function handlePing() {
 
 ### 1.请求参数
 
-|   参数   |   类型   | 必填 |                       说明                       |
-| :------: | :------: | :--: | :----------------------------------------------: |
-|   addr   |  String  |  是  |                    ping的地址                    |
-|   time   |  Number  |  是  |                   超时时间 ms                    |
-| success  | Function |  否  |                接口调用成功的回调                |
-|   fail   | Function |  否  |              接口调用失败的回调函数              |
-| complete | Function |  否  | 接口调用结束的回调函数（调用成功、失败都会执行） |
+|    参数    |   类型   | 必填 |                       说明                       |
+| :--------: | :------: | :--: | :----------------------------------------------: |
+|    addr    |  String  |  是  |                    ping的地址                    |
+|    time    |  Number  |  否  |                 超时时间s,默认5s                 |
+|   count    |  Number  |  否  |                 ping次数,默认5次                 |
+| packetSize |  Number  |  否  |                  包大小,默认32                   |
+|  success   | Function |  否  |                接口调用成功的回调                |
+|    fail    | Function |  否  |              接口调用失败的回调函数              |
+|  complete  | Function |  否  | 接口调用结束的回调函数（调用成功、失败都会执行） |
 ### 2.返回值
 
-|    参数    |  类型  |         说明          |
-| :--------: | :----: | :-------------------: |
-|  errCode   | Number |        错误码         |
-| errSubject | String |      errSubject       |
-|   errMsg   | String |       错误信息        |
-|    time    | Number | ping所用时间,单位为ms |
+|    参数    |  类型  |       说明        |
+| :--------: | :----: | :---------------: |
+|  errCode   | Number |      错误码       |
+| errSubject | String |    errSubject     |
+|   errMsg   | String |     错误信息      |
+|    time    | Number | 平均时延,单位为ms |
+| packetLoss | Number |      丢包率       |
 
 ## 捐赠
 
